@@ -12,19 +12,16 @@ class SHAP():
     
     Parameters:
     model: model or prediction function of model takes 2D input (np.ndarray) and return 2D output.
-    data_y (np.ndarray): Input data being explained (2D shape).
     features_list_names: List of name of features.
     labels_name: List of the labels being predicted.
     '''
     def __init__(self):
         self.model = None
-        self.data_y = None
         self.feature_list_names = None
         self.labels_name = None
 
-    def fit_exp(self, model, y, features_list_names, labels_name):
+    def fit_exp(self, model, features_list_names, labels_name):
         self.model = model
-        self.data_y = y
         self.feature_names = features_list_names
         self.class_names = labels_name
     
@@ -219,7 +216,7 @@ class SHAP():
         average_contribution = np.mean(marginal_contribution)
         return average_contribution
 
-    def shap_values_multivariate(self, y):
+    def shap_values(self, y):
         """
         The function that computes and returns the average contribution of all features.
     
