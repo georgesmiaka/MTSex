@@ -155,9 +155,9 @@ class SHAP():
         
         # compute baseline prediction
         #baseline_pred = model.predict_2Dto3D(baseline_tab)
-        baseline_pred = model.predict(baseline_tab)
+        baseline_pred = model.predict_2d_to_3d(baseline_tab)
         # compute y_true
-        original_pred = model.predict(data)
+        original_pred = model.predict_2d_to_3d(data)
 
         # reshap predictions from 3d to 2d
         if (self._is_3d(baseline_pred)):
@@ -195,8 +195,8 @@ class SHAP():
         
 
             # compute marginal contribution
-            pred_without_feature = model.predict(without_feature)
-            pred_with_feature = model.predict(with_feature)
+            pred_without_feature = model.predict_2d_to_3d(without_feature)
+            pred_with_feature = model.predict_2d_to_3d(with_feature)
 
             # reshap prediction 3d to 2d
             if (self._is_3d(pred_without_feature)):
