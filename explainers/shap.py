@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 from itertools import product
 import matplotlib.pyplot as plt
-from sklearn.metrics import mean_squared_error
 
 
 class SHAP():
@@ -14,14 +13,17 @@ class SHAP():
     model: model or prediction function of model takes 2D input (np.ndarray) and return 2D output.
     features_list_names: List of name of features.
     labels_name: List of the labels being predicted.
+    loss: loss function for measuring the prediction accurancy
     '''
     def __init__(self):
         self.model = None
         self.feature_list_names = None
         self.labels_name = None
+        self.loss = None
 
-    def fit_exp(self, model, features_list_names, labels_name):
+    def fit_exp(self, model, loss, features_list_names, labels_name):
         self.model = model
+        self.loss = loss
         self.feature_names = features_list_names
         self.class_names = labels_name
     
@@ -122,6 +124,8 @@ class SHAP():
         """
         Generate and return the coalition matrix of size 2^feature_num
         """
+        if(feature_num>12):
+            feature_num = 11
         mask = np.array(list(product(range(2), repeat=feature_num)))
         mask = mask[~np.all(mask == 0, axis=1)]
         mask = mask[~np.all(mask == 1, axis=1)]
@@ -155,18 +159,12 @@ class SHAP():
         
         # compute baseline prediction
         #baseline_pred = model.predict_2Dto3D(baseline_tab)
-        baseline_pred = model.predict_2d_to_3d(baseline_tab)
+        baseline_pred = model(baseline_tab)
         # compute y_true
-        original_pred = model.predict_2d_to_3d(data)
-
-        # reshap predictions from 3d to 2d
-        if (self._is_3d(baseline_pred)):
-            baseline_pred_reshap = self._transform_to_2d(baseline_pred)
-        if (self._is_3d(original_pred)):
-            original_pred_reshap = self._transform_to_2d(original_pred)
+        original_pred = model(data)
 
         # compute RMSEvalue original_pred vs baseline_pres
-        rmse = mean_squared_error(original_pred_reshap, baseline_pred_reshap)
+        rmse = self.loss(original_pred, baseline_pred)
 
         # compute marginal contribution for baseline {feature} - {}
         weight = self._compute_weight(feature_num, 1)
@@ -195,19 +193,12 @@ class SHAP():
         
 
             # compute marginal contribution
-            pred_without_feature = model.predict_2d_to_3d(without_feature)
-            pred_with_feature = model.predict_2d_to_3d(with_feature)
-
-            # reshap prediction 3d to 2d
-            if (self._is_3d(pred_without_feature)):
-                pred_without_feature_reshap = self._transform_to_2d(pred_without_feature)
-            
-            if (self._is_3d(pred_with_feature)):
-                pred_with_feature_reshap = self._transform_to_2d(pred_with_feature)
+            pred_without_feature = model(without_feature)
+            pred_with_feature = model(with_feature)
 
             # compute rmse without_feature vs original_pred, rmse with_feature vs original_pred
-            rmse_without_feature = mean_squared_error(original_pred_reshap, pred_without_feature_reshap)
-            rmse_with_feature = mean_squared_error(original_pred_reshap, pred_with_feature_reshap)
+            rmse_without_feature = self.loss(original_pred, pred_without_feature)
+            rmse_with_feature = self.loss(original_pred, pred_with_feature)
             # compute the marginal contribution of the feature in the combination
             pred = weight*(rmse_with_feature - rmse_without_feature)
             marginal_contribution.append(pred)

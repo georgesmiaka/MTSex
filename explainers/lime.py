@@ -1,12 +1,8 @@
 
-import math
 import numpy as np
 import pandas as pd
-from itertools import product
 import matplotlib.pyplot as plt
-from sklearn.metrics import mean_squared_error
 import random
-from sklearn.metrics import mean_absolute_percentage_error
 from statsmodels.tsa.api import VAR
 
 class LIME():
@@ -17,14 +13,17 @@ class LIME():
     model: model or prediction function of model takes 2D input (np.ndarray) and return 2D output.
     features_list_names: List of name of features.
     labels_name: List of the labels being predicted.
+    loss: loss function for measuring prediction accurancy
     '''
     def __init__(self):
         self.model = None
         self.feature_list_names = None
         self.labels_name = None
+        self.loss = None
 
-    def fit_exp(self, model, features_list_names, labels_name):
+    def fit_exp(self, model, loss, features_list_names, labels_name):
         self.model = model
+        self.loss = loss
         self.feature_list_names = features_list_names
         self.labels_name = labels_name
     
@@ -39,9 +38,15 @@ class LIME():
         if data.ndim == 2:
             y = True
         return y
+    
+    def _is_1d(self, data):
+        y = False
+        if data.ndim == 1:
+            y = True
+        return y
 
     def _transform_to_3d(self, data):
-        y = data.reshape((1, data.shape[0], data.shape[1])) #(num_samples, sample_size, nu_features)
+        y = data.reshape((1, data.shape[0], data.shape[1])) 
         return y
 
     def _transform_to_2d(self, data):
@@ -105,18 +110,16 @@ class LIME():
     def _pred_perturbed_sample_with_blackbox(self, original, samples):
 
         # compute original prediction
-        original_pred = self.model.predict(original)
-        if (self._is_3d(original_pred)):
-            original_pred_reshap = self._transform_to_2d(original_pred)
+        original_pred = self.model(original)
         
         # Compute best samples predictions
         best_samples, best_distances = self._get_best_perturbed_samples(original, samples, 10)
-        best_samples_pred = self.model.predict(best_samples)
+        best_samples_pred = self.model(best_samples)
         
         mse_scores = []
         # Evaluations original predictions vs best_samples_pred
         for sample in best_samples_pred:
-            mse = mean_squared_error(original_pred_reshap, sample)
+            mse = self.loss(original_pred, sample)
             mse_scores.append(mse)
 
         return best_samples, best_samples_pred, best_distances, mse_scores
@@ -133,7 +136,7 @@ class LIME():
         fig, axs = plt.subplots(1, 2, figsize=(12, 5))
 
         # Plot on the first subplot
-        axs[0].plot(distance_scores, 'b', label='MSE Scores')
+        axs[0].plot(distance_scores, 'b', label='Loss Scores')
         axs[0].set_title('Black-box Sensitivity Analysis')
         axs[0].set_xlabel('Perturbed Samples')
         #axs[0].set_ylabel('Distance-Scores Evaluatio')
@@ -174,10 +177,10 @@ class LIME():
         # Init the VAR model
         model = VAR(df)
         # Fit the model
-        results = model.fit(maxlags=lag_nr, trend='n')
+        results = model.fit(maxlags=14, trend='n')
         lag_order = results.k_ar
         fcst = results.forecast(df.values[-lag_order:], lag_nr)
-        model_accuracy = 1 - mean_absolute_percentage_error(y_true, fcst[:, :len(self.labels_name)])
+        model_accuracy = self.loss(y_true, fcst[:, :len(self.labels_name)])
         return results.params, model_accuracy
     
     def _extract_lagged_effects(self, dataframe, labels):
@@ -256,9 +259,9 @@ class LIME():
         # loss scores
         loss_s = []
         # if one_sample_only = True show result for the 1st sample only
-        if one_sample_only:
+        for item in range(len(best_samples)):
             # get result from surogate mode
-            results, loss_scores = self._surogate_model_var(best_samples[0], best_samples_pred[0])
+            results, loss_scores = self._surogate_model_var(best_samples[item], best_samples_pred[item])
             # Extracts matrices of lagged variable effects for specified labels from a VAR model's coefficient DataFrame.
             lagged_effects = self._extract_lagged_effects(results, self.labels_name)
 
