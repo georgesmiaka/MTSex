@@ -120,7 +120,38 @@ class SHAP():
         """
         return (math.factorial(subset_size - 1) * math.factorial(total_features - subset_size)) / math.factorial(total_features)
 
-    def _create_mask(self, feature_num):
+    def _create_mask(self, feature_num, exclude_feature=None):
+        """
+        Generate and return the coalition matrix of size 2^feature_num, excluding 
+        coalitions where the specified feature (exclude_feature) appears. If feature_num
+        is greater than 10, randomly sample 2^10 coalitions from the final matrix.
+        """
+        max_feature_num = 10
+        sample_size = 2 ** max_feature_num
+
+        # Generate the coalition matrix
+        mask = np.array(list(product(range(2), repeat=feature_num)))
+        
+        # Remove the all-zero and all-one coalitions
+        mask = mask[~np.all(mask == 0, axis=1)]
+        mask = mask[~np.all(mask == 1, axis=1)]
+        
+        # If exclude_feature is specified, remove all coalitions where this feature appears
+        if exclude_feature is not None and 0 <= exclude_feature < feature_num:
+            mask = mask[mask[:, exclude_feature] == 0]
+
+        # If feature_num is greater than max_feature_num, randomly sample 2^max_feature_num coalitions
+        if feature_num > max_feature_num:
+            if mask.shape[0] > sample_size:
+                #np.random.seed(42)  # If we want to get the same results every time we run the code
+                mask = mask[np.random.choice(mask.shape[0], sample_size, replace=False)]
+            else:
+                print(f"Warning: The number of available coalitions ({mask.shape[0]}) is less than {sample_size}.")
+        
+        return mask
+    
+    
+    def _create_mask2(self, feature_num):
         """
         Generate and return the coalition matrix of size 2^feature_num
         """
@@ -147,7 +178,7 @@ class SHAP():
         - The average contribution of "feature".
         """
         # create coalition matrix for masking
-        mask=self._create_mask(feature_num)
+        mask=self._create_mask(feature_num, feature)
 
         # configuration
         marginal_contribution = []
