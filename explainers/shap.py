@@ -5,9 +5,9 @@ from itertools import product
 import matplotlib.pyplot as plt
 
 
-class SHAP():
+class MTSexpSHAP():
     '''
-    The SHAP Explainer class.
+    The MTSexp SHAP Explainer class.
     
     Parameters:
     model: model or prediction function of model takes 2D input (np.ndarray) and return 2D output.
@@ -21,11 +21,11 @@ class SHAP():
         self.labels_name = None
         self.loss = None
 
-    def fit_exp(self, model, loss, features_list_names, labels_name):
+    def fit_exp(self, model, loss, feature_name_list, label_names):
         self.model = model
         self.loss = loss
-        self.feature_names = features_list_names
-        self.class_names = labels_name
+        self.feature_names = feature_name_list
+        self.class_names = label_names
     
     def _is_3d(self, data):
         y = False

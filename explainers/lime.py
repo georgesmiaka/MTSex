@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import random
 from statsmodels.tsa.api import VAR
 
-class LIME():
+class MTSexpLIME():
     '''
     The LIME Explainer class.
     
