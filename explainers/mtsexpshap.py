@@ -281,15 +281,18 @@ class MTSexpSHAP():
     
     def plot_shap_values(self, s_values: np.ndarray):
         """
-        Plot the features' average contribution with SHAP values.
+        Plot the features' average contribution with SHAP values and return the plot.
         """
         feature_names = self.feature_names
         bar_colors = ['red' if x < 0 else 'blue' for x in s_values]
 
-        plt.figure(figsize=(10, 6))
+        fig, ax = plt.subplots(figsize=(10, 6))
         y_pos = np.arange(len(feature_names))
-        plt.barh(y_pos, s_values, align='center', color=bar_colors)
-        plt.yticks(y_pos, feature_names)
-        plt.xlabel('Mean SHAP Value')
-        plt.title('Feature Average Contribution with SHAP Values')
-        plt.show()
+        ax.barh(y_pos, s_values, align='center', color=bar_colors)
+        ax.set_yticks(y_pos)
+        ax.set_yticklabels(feature_names)
+        ax.set_xlabel('Mean SHAP Value')
+        ax.set_title('Feature Average Contribution with SHAP Values')
+        
+        plt.close(fig)  # Close the figure to prevent it from displaying immediately in some environments
+        return fig

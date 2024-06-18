@@ -106,7 +106,8 @@ class MTSexpLIME:
         axs[1].legend()
 
         plt.tight_layout()
-        plt.show()
+        plt.close(fig)
+        return fig
 
     def _nparray_to_dataframe(self, y):
         return pd.DataFrame(y, columns=self.feature_list_names)
@@ -179,31 +180,55 @@ class MTSexpLIME:
         mean_effects = np.mean(effect_arrays, axis=0)
         return mean_effects
     
-    def _plot_average_feature_effect(self, mean_scores):
-        values = mean_scores
+    def _plot_average_feature_effect(self, mean_effects):
+        """
+        Plot the average feature effect and return the plot.
+        
+        Parameters:
+        - mean_effects: The mean effects for each feature.
+        
+        Returns:
+        - fig: The matplotlib Figure object.
+        """
+        values = mean_effects
         feature_names = self.feature_list_names
 
         # Determine bar colors based on the sign of the scaled Shapley values
         bar_colors = ['red' if x < 0 else 'blue' for x in values]
 
-        # Plot
-        plt.figure(figsize=(10, 6))
+        # Create Figure and Axes objects
+        fig, ax = plt.subplots(figsize=(10, 6))
         y_pos = np.arange(len(feature_names))
-        plt.barh(y_pos, values, align='center', color=bar_colors)
-        plt.yticks(y_pos, feature_names)
-        plt.xlabel('Magnitude of the coefficients effect')
-        plt.title('variables significance')
-        plt.show()
+        ax.barh(y_pos, values, align='center', color=bar_colors)
+        ax.set_yticks(y_pos)
+        ax.set_yticklabels(feature_names)
+        ax.set_xlabel('Magnitude of the coefficients effect')
+        ax.set_title('Variables Significance')
+        
+        plt.close(fig)  # Close the figure to prevent it from displaying immediately in some environments
+        return fig
+
 
     def _evaluate_surogate_model(self, loss_score):
-        # Plotting for visual analysis
-        plt.figure(figsize=(8, 6))
-        plt.plot(loss_score, alpha=0.7)
-        plt.xlabel('Pertubated Samples')
-        plt.ylabel('Loss scores Evaluation')
-        plt.title('Surogate Model Sensitivity Analysis')
-        plt.grid(True)
-        plt.show()
+        """
+        Plot the surrogate model evaluation and return the plot.
+        
+        Parameters:
+        - loss_score: The loss scores for each perturbed sample.
+        
+        Returns:
+        - fig: The matplotlib Figure object.
+        """
+        # Create Figure and Axes objects
+        fig, ax = plt.subplots(figsize=(8, 6))
+        ax.plot(loss_score, alpha=0.7)
+        ax.set_xlabel('Perturbed Samples')
+        ax.set_ylabel('Loss scores Evaluation')
+        ax.set_title('Surrogate Model Sensitivity Analysis')
+        ax.grid(True)
+        
+        plt.close(fig)  # Close the figure to prevent it from displaying immediately in some environments
+        return fig
 
     def calculate_mean_effects_and_losses(self, best_samples, best_samples_pred):
         mean_effects_list = []
@@ -236,10 +261,11 @@ class MTSexpLIME:
         cross_mean_effects, loss_scores_list = self.compute_cross_mean_effects(best_samples, best_samples_pred)
         
         # Plot the cross mean effect
-        self._plot_average_feature_effect(cross_mean_effects)
+        fig1 = self._plot_average_feature_effect(cross_mean_effects)
         
         # Evaluate and plot the surrogate model adaptability
-        self._evaluate_surogate_model(loss_scores_list)
+        fig2 = self._evaluate_surogate_model(loss_scores_list)
+        return fig1, fig2
 
 
 
