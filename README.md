@@ -27,7 +27,7 @@ MTSexpSHAP is also a model-agnostic and post-hoc method derived from the existin
 
 ![SHAP Eq1](explainers/out/ex_20240618_205131/shap_eq1.png)
 
-However, to tackle the dimensionality issue that can arise when using the equation above, where the operation of \( val(S \cup \{i\}) - val(S) \) may not result in a single value as expected in the context of multivariate time series, MTSexpSHAP uses a modified version of the equation that fits multivariate settings:
+However, to tackle the dimensionality issue that can arise when using the equation above, where the operation of \( val(S U \{i\}) - val(S) \) may not result in a single value as expected in the context of multivariate time series, MTSexpSHAP uses a modified version of the equation that fits multivariate settings:
 
 ![SHAP Eq2](explainers/out/ex_20240618_205131/shap_eq2.png)
 
