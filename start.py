@@ -100,8 +100,8 @@ def main():
     
 
     fig_lime_ev_surogate, fig_lime_effects = lime_exp.average_neighborhood_feature_effect(best_samples, best_samples_pred)
-    save_plot(fig_lime_effects, output_dir, "MTSexpLIME_average_neighborhood_feature_effect")
-    save_plot(fig_lime_ev_surogate, output_dir, "MTSexpLIME_evaluate_surogate_model")
+    save_plot(fig_lime_effects, output_dir, "MTSexpLIME_evaluate_surogate_model")
+    save_plot(fig_lime_ev_surogate, output_dir, "MTSexpLIME_average_neighborhood_feature_effect")
 
 if __name__ == "__main__":
     main()
