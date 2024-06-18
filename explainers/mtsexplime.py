@@ -5,16 +5,18 @@ import matplotlib.pyplot as plt
 import random
 from statsmodels.tsa.api import VAR
 
-class MTSexpLIME():
+
+class MTSexpLIME:
     '''
-    The LIME Explainer class.
+    The LIME Explainer class for Multivariate Time Series.
     
     Parameters:
     model: model or prediction function of model takes 2D input (np.ndarray) and return 2D output.
     features_list_names: List of name of features.
     labels_name: List of the labels being predicted.
-    loss: loss function for measuring prediction accurancy
+    loss: loss function for measuring prediction accuracy.
     '''
+    
     def __init__(self):
         self.model = None
         self.feature_list_names = None
@@ -27,55 +29,36 @@ class MTSexpLIME():
         self.feature_list_names = features_list_names
         self.labels_name = labels_name
     
-    def _is_3d(self, data):
-        y = False
-        if data.ndim == 3:
-            y = True
-        return y
-
-    def _is_2d(self, data):
-        y = False
-        if data.ndim == 2:
-            y = True
-        return y
-    
-    def _is_1d(self, data):
-        y = False
-        if data.ndim == 1:
-            y = True
-        return y
-
     def _transform_to_3d(self, data):
-        y = data.reshape((1, data.shape[0], data.shape[1])) 
-        return y
+        return data.reshape((1, data.shape[0], data.shape[1]))
 
     def _transform_to_2d(self, data):
-        y = data.reshape(data.shape[0]*data.shape[1], data.shape[2])
-        return y
+        return data.reshape(data.shape[0] * data.shape[1], data.shape[2])
     
-    def _perturb_time_series_lime(self, matrix, n_samples=500):
+    def _perturb_time_series(self, time_series, noise_sd=0.1, num_samples=500):
         """
-        Generates multiple perturbed samples around  the original sequence.
-
+        Generate multiple perturbed samples with random permutation and noise for a multivariate time series dataset.
+        
         Parameters:
-            matrix (np.ndarray): The original sequence of lime (timesteps, features).
+        - time_series: numpy array of shape (timesteps, features)
+        - noise_sd: standard deviation of the Gaussian noise to be added
+        - num_samples: number of perturbed samples to generate
         
         Returns:
-            np.ndarray: Multiple perturbed samples of default shape (500, timesteps, features).
+        - noisy_time_series_samples: numpy array of shape (num_samples, timesteps, features)
         """
-        original_trajectory = np.array(matrix)
-        timesteps, features = original_trajectory.shape
-        # Initialize perturbation matrix
-        perturbed_samples = np.zeros((n_samples, timesteps, features))
-
-        for sample in range(n_samples):
-            random_choice = np.random.choice([-2.0, 2.0])
-            random_integer = random.randint(1, 100)
-            # Iterate over each feature
-            for i in range(original_trajectory.shape[1]):
-                perturbed_samples[sample, :, i] = original_trajectory[:, i] + ((random_integer*random_choice))
+        timesteps, features = time_series.shape
+        noisy_time_series_samples = np.zeros((num_samples, timesteps, features))
         
-        return perturbed_samples
+        for i in range(num_samples):
+            for feature in range(features):
+                permuted_timesteps = np.random.permutation(timesteps)
+                permuted_data = time_series[permuted_timesteps, feature]
+                noise = np.random.normal(0, noise_sd, timesteps)
+                noisy_time_series_samples[i, :, feature] = permuted_data + noise
+        
+        return noisy_time_series_samples
+
     
     def _euclidean_distance(self, original, perturbed):
         """
@@ -88,75 +71,45 @@ class MTSexpLIME():
         Returns:
         - distances (np.ndarray): Array of distances for each sample, shape (n_samples,)
         """
-        # Subtract the original trajectory from each perturbed sample, square the results, sum across features, and take the square root
-        squared_diff = np.sum((perturbed - original)**2, axis=2)
+        squared_diff = np.sum((perturbed - original) ** 2, axis=2)
         distances = np.sqrt(np.mean(squared_diff, axis=1))
         return distances
     
     def _get_best_perturbed_samples(self, original, samples, limit):
-        # Compute the euclidean distance (original, perturbed)
         distances = self._euclidean_distance(original, samples)
-
-        # Get indices of the "limit" samples with the smallest distances
         indices = np.argsort(distances)[:limit]
-
-        # Select the "limit" best samples and their distances
-        best_samples = samples[indices]
-        best_distances = distances[indices]
-
-        # return best_samples and their distances
-        return best_samples, best_distances
+        return samples[indices], distances[indices]
     
     def _pred_perturbed_sample_with_blackbox(self, original, samples):
-
-        # compute original prediction
         original_pred = self.model(original)
-        
-        # Compute best samples predictions
         best_samples, best_distances = self._get_best_perturbed_samples(original, samples, 10)
         best_samples_pred = self.model(best_samples)
         
-        mse_scores = []
-        # Evaluations original predictions vs best_samples_pred
-        for sample in best_samples_pred:
-            mse = self.loss(original_pred, sample)
-            mse_scores.append(mse)
-
+        mse_scores = [self.loss(original_pred, sample) for sample in best_samples_pred]
         return best_samples, best_samples_pred, best_distances, mse_scores
     
     def blackbox_evaluation(self, y):
-        # create perturbed samples around y
-        samples = self._perturb_time_series_lime(y)
-        # Get best perturbed samples, their predictions, their proximity score, and their mse scores
+        samples = self._perturb_time_series(y)
         best_samples, best_samples_pred, distance_scores, mse_scores = self._pred_perturbed_sample_with_blackbox(y, samples)
         return best_samples, best_samples_pred, distance_scores, mse_scores 
     
     def plot_blackbox_evaluation(self, distance_scores, mse_scores):
-        # Create a figure with two subplots, 1 row and 2 columns
         fig, axs = plt.subplots(1, 2, figsize=(12, 5))
 
-        # Plot on the first subplot
-        axs[0].plot(distance_scores, 'b', label='Loss Scores')
+        axs[0].plot(distance_scores, 'b', label='Distance Scores')
         axs[0].set_title('Black-box Sensitivity Analysis')
         axs[0].set_xlabel('Perturbed Samples')
-        #axs[0].set_ylabel('Distance-Scores Evaluatio')
         axs[0].legend()
 
-        # Plot on the second subplot
-        axs[1].plot(mse_scores, 'r', label='Distance Scores')
-        axs[0].set_xlabel('Perturbed Samples ')
-        #axs[0].set_ylabel('MSE-Scores Evaluation')
+        axs[1].plot(mse_scores, 'r', label='Loss Scores')
+        axs[1].set_xlabel('Perturbed Samples')
         axs[1].legend()
 
-        # Adjust layout for better fit and visibility
         plt.tight_layout()
         plt.show()
 
-
-    
     def _nparray_to_dataframe(self, y):
-        x = pd.DataFrame(y, columns=self.feature_list_names)
-        return x
+        return pd.DataFrame(y, columns=self.feature_list_names)
     
     def _surogate_model_var(self, sample, y_true):
         """
@@ -177,7 +130,7 @@ class MTSexpLIME():
         # Init the VAR model
         model = VAR(df)
         # Fit the model
-        results = model.fit(maxlags=14, trend='n')
+        results = model.fit(maxlags=4, trend='n')
         lag_order = results.k_ar
         fcst = results.forecast(df.values[-lag_order:], lag_nr)
         model_accuracy = self.loss(y_true, fcst[:, :len(self.labels_name)])
@@ -252,31 +205,44 @@ class MTSexpLIME():
         plt.grid(True)
         plt.show()
 
-    def average_feature_effect(self, best_samples, best_samples_pred, one_sample_only=True):
+    def calculate_mean_effects_and_losses(self, best_samples, best_samples_pred):
+        mean_effects_list = []
+        loss_scores_list = []
         
-        # Average effects array
-        avg_effects = []
-        # loss scores
-        loss_s = []
-        # if one_sample_only = True show result for the 1st sample only
-        for item in range(len(best_samples)):
-            # get result from surogate mode
-            results, loss_scores = self._surogate_model_var(best_samples[item], best_samples_pred[item])
-            # Extracts matrices of lagged variable effects for specified labels from a VAR model's coefficient DataFrame.
+        for sample, sample_pred in zip(best_samples, best_samples_pred):
+            results, loss_score = self._surogate_model_var(sample, sample_pred)
             lagged_effects = self._extract_lagged_effects(results, self.labels_name)
 
+            avg_effects = []
             for label in self.labels_name:
                 label_effect = self._calculate_average_effects(lagged_effects[label])
                 avg_effects.append(label_effect)
-            # Calculate the average acrros labels
+            
             mean_effects = self._average_across_labels(avg_effects)
-            self._plot_average_feature_effect(mean_effects)
-        # plot surogate model adaptability
-        for item in range(len(best_samples)):
-            # get result from surogate mode
-            results, loss_scores = self._surogate_model_var(best_samples[item], best_samples_pred[item])
-            loss_s.append(loss_scores)
-        self._evaluate_surogate_model(loss_s)
+            mean_effects_list.append(mean_effects)
+            loss_scores_list.append(loss_score)
+        
+        return mean_effects_list, loss_scores_list
+    
+    def compute_cross_mean_effects(self, best_samples, best_samples_pred):
+        mean_effects_list, loss_scores_list = self.calculate_mean_effects_and_losses(best_samples, best_samples_pred)
+        
+        # Compute the average effects across all samples
+        cross_mean_effects = np.mean(mean_effects_list, axis=0)
+        
+        return cross_mean_effects, loss_scores_list
+    
+    def average_neighborhood_feature_effect(self, best_samples, best_samples_pred):
+        cross_mean_effects, loss_scores_list = self.compute_cross_mean_effects(best_samples, best_samples_pred)
+        
+        # Plot the cross mean effect
+        self._plot_average_feature_effect(cross_mean_effects)
+        
+        # Evaluate and plot the surrogate model adaptability
+        self._evaluate_surogate_model(loss_scores_list)
+
+
+
 
 
 
