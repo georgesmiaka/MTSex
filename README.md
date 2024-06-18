@@ -10,33 +10,40 @@ Here is an overview of the MTSexp explainers:
 ### 2.1 MTSexpLIME
 MTSexpLIME is a model-agnostic and post-hoc method derived from the existing LIME framework. MTSexpLIME works with multivariate time series data. The main difference from the existing LIME is the use of a Vector Auto Regression model (VAR) as a surrogate model instead of the linear model (typically a weighted linear regression model) used in LIME. Here is the pseudocode for MTSexpLIME:
 
-\begin{algorithm}
-\caption{IMT-LIME based on classic LIME in \cite{ribeiro2016should_lime}}\label{alg:imt_lime}
-\begin{algorithmic}
-\Require Black-box model $f$. Number of samples $N$
-\Require Instance $x$. Similarity kernel $\pi_x$ (Mean square error - MSE)
-\Require Surrogate interpretable model $V$ (Vector Auto Regression - VAR)
-\Ensure Vector Effect Matrix
-    \State $similarity\_vector \gets []$
-    \State $new\_samples \gets []$
-    \State $ten\_best\_samples \gets []$
-    \State $vector\_effect\_matrix \gets []$
-        \For{$i$ in $\{1, 2, 3,\ldots, N\}$}
-            \State $z_{i} \gets sample\_around(x)$
-            \State $S_{i} \gets \pi_x(z_{i})$
-            \State $new\_samples \gets z_{i}$
-            \State $similarity\_vector \gets S_{i}$
-        \EndFor
-        \State $ten\_best\_samples \gets select\_ten(similarity\_vector, new\_samples)$
-        \For{each sample $j$ in $ten\_best\_samples$}
-            \State $MSE(f(x), f(j))$ \Comment{Evaluating the black-box with perturbed data}
-            \State $exp \gets V(j)$ \Comment{Getting effect matrix for sample \textit{j}}
-            \State $MSE(f(j), V(j))$ \Comment{Evaluating the surrogate approximation}
-            \State $exp \gets vector\_effect\_matrix$
-        \EndFor
-    \State \textbf{return} $vector\_effect\_matrix$
-\end{algorithmic}
-\end{algorithm}
+### Algorithm: IMT-LIME based on classic LIME
+
+**Input:**
+- Black-box model \( f \)
+- Number of samples \( N \)
+- Instance \( x \)
+- Similarity kernel \( \pi_x \) (Mean square error - MSE)
+- Surrogate interpretable model \( V \) (Vector Auto Regression - VAR)
+
+**Output:**
+- Vector Effect Matrix
+
+**Algorithm:**
+1. Initialize \( similarity\_vector \) as an empty list
+2. Initialize \( new\_samples \) as an empty list
+3. Initialize \( ten\_best\_samples \) as an empty list
+4. Initialize \( vector\_effect\_matrix \) as an empty list
+
+5. **for** each \( i \) in \( \{1, 2, 3, \ldots, N\} \) **do**
+   - \( z_{i} \gets \text{sample\_around}(x) \)
+   - \( S_{i} \gets \pi_x(z_{i}) \)
+   - Add \( z_{i} \) to \( new\_samples \)
+   - Add \( S_{i} \) to \( similarity\_vector \)
+
+6. \( ten\_best\_samples \gets \text{select\_ten}(similarity\_vector, new\_samples) \)
+
+7. **for** each sample \( j \) in \( ten\_best\_samples \) **do**
+   - Evaluate \( MSE(f(x), f(j)) \) \(\triangleright\) Evaluating the black-box with perturbed data
+   - \( exp \gets V(j) \) \(\triangleright\) Getting effect matrix for sample \( j \)
+   - Evaluate \( MSE(f(j), V(j)) \) \(\triangleright\) Evaluating the surrogate approximation
+   - Append \( exp \) to \( vector\_effect\_matrix \)
+
+8. **return** \( vector\_effect\_matrix \)
+
 
 The result we get from the VAR model provides the contribution effects of each feature to the prediction, where a positive coefficient indicates a positive effect of the feature on the prediction, while a negative coefficient suggests an inverse relationship. The picture below displays the interpretation for a given input data where negative effects are in red and positive effects are in blue.
 
